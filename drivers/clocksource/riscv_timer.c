@@ -55,8 +55,6 @@ DEFINE_PER_CPU(struct clock_event_device, riscv_clock_event) = {
 	.set_next_event = next_event,
 };
 
-DEFINE_PER_CPU(bool, riscv_clock_event_enabled) = false;
-
 static unsigned long long rdtime(struct clocksource *cs)
 {
 	/*
@@ -68,36 +66,12 @@ static unsigned long long rdtime(struct clocksource *cs)
 	return get_cycles64();
 }
 
-void timer_riscv_init(int cpu_id,
-		      unsigned long riscv_timebase,
-		      int (*next)(unsigned long, struct clock_event_device*))
-{
-	struct clock_event_device *ce = per_cpu_ptr(&riscv_clock_event, cpu_id);
-
-	ce->cpumask = cpumask_of(cpu_id);
-	clockevents_config_and_register(ce, riscv_timebase, MINDELTA, MAXDELTA);
-}
-
 void riscv_timer_init_secondary(void)
 {
 	struct clock_event_device *ce = this_cpu_ptr(&riscv_clock_event);
 
 	ce->cpumask = cpumask_of(smp_processor_id());
 	clockevents_config_and_register(ce, riscv_timebase, MINDELTA, MAXDELTA);
-}
-
-static int hart_of_timer(struct device_node *dev)
-{
-	u32 hart;
-
-	if (!dev->parent)
-		return -1;
-	if (!of_device_is_compatible(dev->parent, "riscv"))
-		return -1;
-	if (of_property_read_u32(dev->parent, "reg", &hart))
-		return -1;
-
-	return hart;
 }
 
 static int timer_riscv_init_dt(struct device_node *n)
