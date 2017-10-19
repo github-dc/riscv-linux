@@ -102,17 +102,20 @@ static int hart_of_timer(struct device_node *dev)
 
 static int timer_riscv_init_dt(struct device_node *n)
 {
-	int cpu_id = hart_of_timer(n);
-	struct clock_event_device *ce = per_cpu_ptr(&riscv_clock_event, cpu_id);
+	struct clock_event_device *ce = this_cpu_ptr(&riscv_clock_event);
+	u32 prop;
 
 	riscv_clocksource.read = rdtime;
 
-	if (cpu_id == smp_processor_id()) {
-		clocksource_register_hz(&riscv_clocksource, riscv_timebase);
+	if (of_property_read_u32(n, "timebase-frequency", &prop))
+		panic(KERN_ERR "RISC-V system with no 'timebase-frequency' in DTS\n");
 
-		ce->cpumask = cpumask_of(cpu_id);
-		clockevents_config_and_register(ce, riscv_timebase, MINDELTA, MAXDELTA);
-	}
+	riscv_timebase = prop;
+
+	clocksource_register_hz(&riscv_clocksource, riscv_timebase);
+
+	ce->cpumask = cpumask_of(smp_processor_id());
+	clockevents_config_and_register(ce, riscv_timebase, MINDELTA, MAXDELTA);
 
 	return 0;
 }
